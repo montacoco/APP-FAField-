@@ -4,12 +4,15 @@ var map = new ol.Map({
     renderer: 'canvas',
     layers: layersList,
     view: new ol.View({
-         maxZoom: 28, minZoom: 1
+         maxZoom: 28, minZoom: 1, projection: new ol.proj.Projection({
+            code: 'EPSG:3857',
+            //extent: [-20037508.342789, -20037508.342789, 20037508.342789, 20037508.342789],
+            units: 'm'})
     })
 });
 
 //initial view - epsg:3857 coordinates if not "Match project CRS"
-map.getView().fit([-11789973.860003, 3430899.199843, -11783075.400085, 3434686.313553], map.getSize());
+map.getView().fit([-11791259.993834, 3431182.594675, -11783701.192538, 3434969.708385], map.getSize());
 
 ////small screen definition
     var hasTouchScreen = map.getViewport().classList.contains('ol-touch');
@@ -112,8 +115,8 @@ var featureOverlay = new ol.layer.Vector({
     updateWhileInteracting: true // optional, for instant visual feedback
 });
 
-var doHighlight = false;
-var doHover = false;
+var doHighlight = true;
+var doHover = true;
 
 function createPopupField(currentFeature, currentFeatureKeys, layer) {
     var popupText = '';
@@ -430,7 +433,56 @@ var bottomRightContainerDiv = document.getElementById('bottom-right-container')
 
 //title
 
+var Title = new ol.control.Control({
+    element: (() => {
+        var titleElement = document.createElement('div');
+        titleElement.className = 'top-right-title ol-control';
+        titleElement.innerHTML = '<h2 class="project-title">Sol.524 Agricultires de DEcierto SA.deSB Análisis Multitemporal</h2>';
+        return titleElement;
+    })(),
+    target: 'top-right-container'
+});
+map.addControl(Title)
+    
 //abstract
+
+var Abstract = new ol.control.Control({
+    element: (() => {
+        var titleElement = document.createElement('div');
+        titleElement.className = 'bottom-right-abstract ol-control';
+        titleElement.id = 'abstract';
+
+        var linkElement = document.createElement('a');
+
+        if (291 > 240) {
+            linkElement.setAttribute("onmouseenter", "showAbstract()");
+            linkElement.setAttribute("onmouseleave", "hideAbstract()");
+            linkElement.innerHTML = 'i';
+
+            window.hideAbstract = function() {
+                linkElement.classList.add("project-abstract");
+                linkElement.classList.remove("project-abstract-uncollapsed");
+                linkElement.innerHTML = 'i';
+            }
+
+            window.showAbstract = function() {
+                linkElement.classList.remove("project-abstract");
+                linkElement.classList.add("project-abstract-uncollapsed");
+                linkElement.innerHTML = 'Este mapa presenta un análisis multitemporal del cultivo de algodón, integrando imágenes satelitales de diferentes fechas y datos de supervisión de alta resolución capturados con drones. El objetivo es evaluar la salud vegetal y realizar una zonificación detallada del estado del cultivo. <br /><br />';
+            }
+
+            hideAbstract();
+        } else {
+            linkElement.classList.add("project-abstract-uncollapsed");
+            linkElement.innerHTML = 'Este mapa presenta un análisis multitemporal del cultivo de algodón, integrando imágenes satelitales de diferentes fechas y datos de supervisión de alta resolución capturados con drones. El objetivo es evaluar la salud vegetal y realizar una zonificación detallada del estado del cultivo. <br /><br />';
+        }
+
+        titleElement.appendChild(linkElement);
+        return titleElement;
+    })(),
+    target: 'bottom-right-container'
+});
+map.addControl(Abstract);
 
 
 //geolocate
@@ -840,6 +892,10 @@ function createMeasureTooltip() {
 }
 
 
+function convertToFeet(length) {
+    feet_length = length * 3.2808;
+    return feet_length
+}
 
 /**
  * format length output
@@ -856,15 +912,15 @@ var formatLength = function(line) {
       var c2 = ol.proj.transform(coordinates[i + 1], sourceProj, 'EPSG:4326');
       length += ol.sphere.getDistance(c1, c2);
     }
-  var output;
-  if (length > 100) {
-    output = (Math.round(length / 1000 * 100) / 100) +
-        ' ' + 'km';
-  } else {
-    output = (Math.round(length * 100) / 100) +
-        ' ' + 'm';
-  }
-  return output;
+    feet_length = convertToFeet(length)
+
+    var output;
+    if (feet_length > 5280) {
+        output = (Math.round(feet_length / 5280 * 100) / 100) + ' miles';
+    } else {
+        output = (Math.round(feet_length * 100) / 100) + ' ft';
+    }
+    return output;
 };
 
 /**
@@ -875,12 +931,11 @@ var formatLength = function(line) {
 var formatArea = function (polygon) {
   var area = polygon.getArea();
   var output;
-  if (area > 1000000) {
-	output =
-	  Math.round((area / 1000000) * 1000) / 1000 + " " + "km<sup>2</sup>";
-  } else {
-	output = Math.round(area * 100) / 100 + " " + "m<sup>2</sup>";
-  }
+  if (area > 107639) {  // Converte 1 km^2 in piedi quadrati
+    output = (Math.round((area / 107639) * 1000) / 1000) + ' sq mi';
+	} else {
+		output = (Math.round(area * 10.7639 * 100) / 100) + ' sq ft';
+	}
   return output;
 };
 
